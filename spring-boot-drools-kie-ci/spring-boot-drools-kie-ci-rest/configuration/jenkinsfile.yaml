@@ -1,0 +1,56 @@
+def mvnCmd = "mvn -s configuration/cicd-settings-nexus3.xml"
+
+pipeline {
+  agent {
+    label 'maven'
+  }
+  stages {
+    stage('Build App') {
+      steps {
+            git branch: 'master', url: 'git@gitlab.fortaleza.ce.gov.br:reberth.silva/main-dispatch-gateway.git',  git credentialsId: 'gitlab.fortaleza.ce.gov.br'
+            sh "${mvnCmd} package -DskipTests=true"
+      }
+    }
+    stage('Test') {
+      steps {
+        sh "${mvnCmd} test"
+        step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
+      }
+    }
+    stage('Code Analysis') {
+      steps {
+        script {
+          sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube:9000 -DskipTests=true"
+        }
+      }
+    }
+    stage('Archive App') {
+      steps {
+        sh "${mvnCmd} package -DskipTests=true -P nexus3"
+      }
+    }
+    stage('Build Image') {
+      steps {
+        sh "cp target/env.ARCHIVE_FILE target/env.ARCHIVE_FILE"
+        script {
+          openshift.withCluster() {
+            openshift.withProject(env.DEV_PROJECT) {
+              openshift.selector("bc", env.APP_NAME).startBuild("--from-file=target/env.ARCHIVE_FILE", "--wait=true")
+            }
+          }
+        }
+      }
+    }
+    stage('Deploy DEV') {
+      steps {
+        script {
+          openshift.withCluster() {
+            openshift.withProject(env.DEV_PROJECT) {
+              openshift.selector("dc", env.APP_NAME).rollout().latest();
+            }
+          }
+        }
+      }
+    }
+  }
+}

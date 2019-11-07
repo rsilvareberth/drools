@@ -1,0 +1,102 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  annotations:
+    openshift.io/generated-by: OpenShiftNewApp
+    pipeline.alpha.openshift.io/uses: '[{"name": "jenkins", "namespace": "", "kind": "DeploymentConfig"}]'
+  creationTimestamp: null
+  labels:
+    app: main-dispatch-gtw-pipeline
+    group: cicd
+    name: main-dispatch-gtw-pipeline
+    template: cicd
+  name: main-dispatch-gtw-pipeline
+  namespace: citinova-logincidadao-dev
+  resourceVersion: '16523706'
+  selfLink: >-
+    /apis/build.openshift.io/v1/namespaces/citinova-logincidadao-dev/buildconfigs/main-dispatch-gtw-pipeline
+spec:
+  failedBuildsHistoryLimit: 5
+  nodeSelector: {}
+  output: {}
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
+  source:
+    type: None
+  strategy:
+    jenkinsPipelineStrategy:
+      env:
+        - name: DEV_PROJECT
+          value: citinova-devops-app-dev
+        - name: STAGE_PROJECT
+          value: citinova-logincidadao-hom
+        - name: ENABLE_QUAY
+          value: 'false'
+        - name: CREDENTIALS_ID
+          value: 'gitlab.fortaleza.ce.gov.br'
+        - name: ARCHIVE_FILE
+          value: 'main-dispatch-gateway-1.0-SNAPSHOT.jar'
+        - name: APP_NAME
+          value: 'main-dispatch-gateway'
+      jenkinsfile: |-
+        def mvnCmd = "mvn -s configuration/cicd-settings-nexus3.xml"
+
+        pipeline {
+          agent {
+            label 'maven'
+          }
+          stages {
+            stage('Build App') {
+              steps {
+                    git branch: 'master', url: 'git@gitlab.fortaleza.ce.gov.br:reberth.silva/main-dispatch-gateway.git',  git credentialsId: 'gitlab.fortaleza.ce.gov.br'
+                    sh "${mvnCmd} package -DskipTests=true"
+              }
+            }
+            stage('Test') {
+              steps {
+                sh "${mvnCmd} test"
+                step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
+              }
+            }
+            stage('Code Analysis') {
+              steps {
+                script {
+                  sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube:9000 -DskipTests=true"
+                }
+              }
+            }
+            stage('Archive App') {
+              steps {
+                sh "${mvnCmd} package -DskipTests=true -P nexus3"
+              }
+            }
+            stage('Build Image') {
+              steps {
+                sh "cp target/env.ARCHIVE_FILE target/env.ARCHIVE_FILE"
+                script {
+                  openshift.withCluster() {
+                    openshift.withProject(env.DEV_PROJECT) {
+                      openshift.selector("bc", env.APP_NAME).startBuild("--from-file=target/env.ARCHIVE_FILE", "--wait=true")
+                    }
+                  }
+                }
+              }
+            }
+            stage('Deploy DEV') {
+              steps {
+                script {
+                  openshift.withCluster() {
+                    openshift.withProject(env.DEV_PROJECT) {
+                      openshift.selector("dc", env.APP_NAME).rollout().latest();
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    type: JenkinsPipeline
+  successfulBuildsHistoryLimit: 5
+status:
+  lastVersion: 26

@@ -1,0 +1,15 @@
+apiVersion: v1
+data:
+  OPENSHIFT_ACTIVEMQ_BROKER_URL: 'tcp://broker-amq-headless.citinova-logincidadao-prd.svc:61616'
+  OPENSHIFT_ACTIVEMQ_OUTPUT_SSO_TOPIC: 'jms:topic:dev-create-person-sso-queue'
+  OPENSHIFT_ACTIVEMQ_OUTPUT_TOPIC_CREATE: 'jms:topic:dev-create-person-queue'
+  OPENSHIFT_ACTIVEMQ_OUTPUT_TOPIC_UPDATE: 'jms:topic:dev-update-person-queue'
+  OPENSHIFT_ACTIVEMQ_POOL_ENABLED: 'true'
+  OPENSHIFT_ACTIVEMQ_POOL_MAX_CONCURRENT_CONSUMERS: '2'
+  OPENSHIFT_ACTIVEMQ_POOL_MAX_CONNECTIONS: '10'
+  OPENSHIFT_APP_MANAGEMENT_PORT: '8081'
+  OPENSHIFT_HEALTH_ENABLED: 'true'
+  OPENSHIFT_MAXRETRY: '6'
+kind: ConfigMap
+metadata:
+  name: main-dispatch-gateway

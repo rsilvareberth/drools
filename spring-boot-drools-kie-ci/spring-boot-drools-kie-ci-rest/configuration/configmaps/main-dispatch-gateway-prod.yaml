@@ -1,0 +1,31 @@
+apiVersion: v1
+data:
+  OPENSHIFT_ACTIVEMQ_BROKER_URL: 'tcp://broker-amq-headless.citinova-logincidadao-prd.svc:61616'
+  OPENSHIFT_ACTIVEMQ_OUTPUT_SSO_TOPIC: 'jms:topic:prd-create-person-sso-queue'
+  OPENSHIFT_ACTIVEMQ_OUTPUT_TOPIC_CREATE: 'jms:topic:prd-create-person-queue'
+  OPENSHIFT_ACTIVEMQ_OUTPUT_TOPIC_UPDATE: 'jms:topic:prd-update-person-queue'
+  OPENSHIFT_ACTIVEMQ_POOL_ENABLED: 'true'
+  OPENSHIFT_ACTIVEMQ_POOL_MAX_CONCURRENT_CONSUMERS: '2'
+  OPENSHIFT_ACTIVEMQ_POOL_MAX_CONNECTIONS: '10'
+  OPENSHIFT_HEALTH_ENABLED: 'true'
+  OPENSHIFT_MAXRETRY: '6'
+  OPENSHIFT_REST_BASE_INTEGRATION_HELLO: >-
+    http://frequencia-sme.citinova-logincidadao-prd.svc.cluster.local:8080/camel/hello
+  OPENSHIFT_REST_BASE_INTEGRATION_SEARCH_FREQUENCIES: >-
+    http://frequencia-sme.citinova-logincidadao-prd.svc.cluster.local:8080/camel/api/frequencies
+  OPENSHIFT_REST_BASE_INTEGRATION_SEARCH_PERSON: >-
+    http://primeiroreg-backend.citinova-logincidadao-prd.svc.cluster.local:8080/v1/pessoa
+  OPENSHIFT_REST_CAPE_INTEGRATION_SEARCH_PERSON: >-
+    http://capeintegration-pesquisarpessoa.citinova-logincidadao-prd.svc.cluster.local:8080/camel/pesquisarpessoa/pessoa
+  OPENSHIFT_REST_CAPE_INTEGRATION_SEARCH_PERSON_TIMEOUT: '30000'
+  OPENSHIFT_REST_RHSSO_INTEGRATION_SEARCH_PERSON: >-
+    http://rhsso-integration.citinova-logincidadao-prd.svc.cluster.local:8080/v1/pessoa
+kind: ConfigMap
+metadata:
+  creationTimestamp: '2019-08-15T15:55:11Z'
+  name: main-dispatch-gateway
+  namespace: citinova-logincidadao-prd
+  resourceVersion: '42724113'
+  selfLink: >-
+    /api/v1/namespaces/citinova-logincidadao-prd/configmaps/main-dispatch-gateway
+  uid: 10489452-bf75-11e9-9f65-005056b5c3ef

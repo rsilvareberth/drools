@@ -1,0 +1,182 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  annotations:
+    openshift.io/generated-by: OpenShiftNewApp
+    pipeline.alpha.openshift.io/uses: >-
+      [{"name": "jenkins", "namespace": "citinova-devops-tools", "kind":
+      "DeploymentConfig"}]
+  labels:
+    app: main-dispatch-gtw-pipeline
+    group: cicd
+    name: main-dispatch-gtw-pipeline
+    template: cicd
+  name: main-dispatch-gtw-pipeline
+  namespace: citinova-logincidadao-dev
+  selfLink: >-
+    /apis/build.openshift.io/v1/namespaces/citinova-logincidadao-dev/buildconfigs/main-dispatch-gtw-pipeline
+spec:
+  failedBuildsHistoryLimit: 5
+  nodeSelector: {}
+  output: {}
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
+  source:
+    type: None
+  strategy:
+    jenkinsPipelineStrategy:
+      env:
+        - name: DEV_PROJECT
+          value: citinova-logincidadao-dev
+        - name: STAGE_PROJECT
+          value: citinova-logincidadao-hom
+        - name: PRD_PROJECT
+          value: citinova-logincidadao-prd
+        - name: ENABLE_QUAY
+          value: 'false'
+        - name: CREDENTIALS_ID
+          value: citinova-devops-tools-pipeline.citinova.gitlab.fortaleza.ce.gov.br
+        - name: BRANCH_NAME
+          value: master
+        - name: GIT_SOURCE_URL
+          value: >-
+            https://gitlab.fortaleza.ce.gov.br/fortaleza-digital/main-dispatch-gateway.git
+      jenkinsfile: |-
+        def mvnCmd = "mvn -s configuration/settings.xml"
+
+        pipeline {
+          agent {
+            label 'maven'
+          }
+          stages {
+            stage('GIT Checkout') {
+              steps {
+                    git branch: '${BRANCH_NAME}', url: '${GIT_SOURCE_URL}', credentialsId: "${CREDENTIALS_ID}"
+              }
+            }
+            stage('Validate POM version') {
+              steps {
+                script {
+                  def pom = readMavenPom file: 'pom.xml'
+                  env.APP_NAME = pom.artifactId
+                  env.VERSION =  pom.version
+                  env.deployFileName = "target/${pom.artifactId}-${pom.version}.jar"
+
+                  if (!(pom.version ==~ /^[0-9]+\.[0-9]+\.[0-9]+/)) {
+                    error ("Versão do POM (${pom.version}) não está conforme o padrão major.minor.patch.")
+                  }
+                }
+              }
+            }
+            stage('Build App') {
+                steps {
+                    sh "${mvnCmd} package -DskipTests=true"
+              }
+            }
+            stage('Unit Test'){
+              steps {
+                sh "${mvnCmd} test"
+              }
+            }
+            stage('Static Analysis') {
+              steps {
+                script {
+                  sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube.citinova-devops-tools.svc.cluster.local:9000 -DskipTests=true"
+                }
+              }
+            }
+            stage('Archive App') {
+              steps {
+                sh "${mvnCmd} clean deploy -DskipTests=true -P nexus3"
+                stash includes: 'target/*.jar, target/*.war', name: 'artifact-stash'
+              }
+            }
+            stage('Build Image') {
+              steps {
+                sh "cp ${deployFileName} target/ROOT.jar"
+                script {
+                  unstash 'artifact-stash'
+                  openshift.withCluster() {
+                    openshift.withProject(env.DEV_PROJECT) {
+                        openshift.selector("bc", "${APP_NAME}").startBuild("--from-file=target/ROOT.jar", "--wait=true")
+                    }
+                  }
+                }
+              }
+            }
+            stage('Tag image') {
+              steps {
+                script {
+                  openshift.withCluster() {
+                    openshift.withProject("${DEV_PROJECT}") {
+                      openshift.tag("${APP_NAME}:latest", "${APP_NAME}:${VERSION}")
+                    }
+                  }
+                }
+              }
+            }
+            stage('Deploy DEV') {
+              steps {
+                script {
+                  openshift.withCluster() {
+                    openshift.withProject(env.DEV_PROJECT) {
+                      openshift.selector("dc", "${APP_NAME}").rollout().latest();
+                    }
+                  }
+                }
+              }
+            }
+            stage('Promote to UAT?') {
+              steps {
+                  timeout(time:7, unit:'DAYS') {
+                        input message: "Promote ${env.APP_NAME} to UAT?", ok: "Promote"
+                }
+                script {
+                  openshift.withCluster() {
+                    openshift.tag("${env.DEV_PROJECT}/${env.APP_NAME}:latest", "${env.STAGE_PROJECT}/${env.APP_NAME}:latest")
+                  }
+                }
+              }
+            }
+            stage('Deploy UAT') {
+              steps {
+                script {
+                  openshift.withCluster() {
+                    openshift.withProject(env.STAGE_PROJECT) {
+                      openshift.selector("dc", env.APP_NAME).rollout().latest();
+                    }
+                  }
+                }
+              }
+            }
+            stage('Promote to PRODUCTION?') {
+              steps {
+                timeout(time:7, unit:'DAYS') {
+                        input message: "Promote ${env.APP_NAME} to PRODUCTION?", ok: "Promote"
+                }
+                script {
+                  openshift.withCluster() {
+                    openshift.tag("${env.STAGE_PROJECT}/${env.APP_NAME}:latest", "${env.PRD_PROJECT}/${env.APP_NAME}:latest")
+                  }
+                }
+              }
+            }
+            stage('Deploy PRODUCTION') {
+              steps {
+                script {
+                  openshift.withCluster() {
+                    openshift.withProject(env.PRD_PROJECT) {
+                      openshift.selector("dc", env.APP_NAME).rollout().latest();
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    type: JenkinsPipeline
+  successfulBuildsHistoryLimit: 5
+  triggers: []
+status:
+  lastVersion: 0

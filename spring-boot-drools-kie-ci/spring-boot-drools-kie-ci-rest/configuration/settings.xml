@@ -1,0 +1,48 @@
+<settings>
+  <servers>
+     <server>
+        <id>nexus3</id>
+        <username>deployment</username>
+        <password>oXgKEjxgPgO7ynp2YdNb</password>
+     </server>
+  </servers>
+  <mirrors>
+
+    <mirror>
+      <!--This sends everything else to /public -->
+      <id>nexus</id>
+      <mirrorOf>*</mirrorOf>
+<!--       <url>https://nexus-citinova-devops-tools.apps.fortaleza.ce.gov.br/repository/maven-all-public/</url> -->
+    <url>http://nexus.citinova-devops-tools.svc:8081/repository/maven-all-public/</url>
+    </mirror>
+    
+
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>nexus</id>
+      <!--Enable snapshots for the built in central repo to direct -->
+      <!--all requests to nexus via the mirror -->
+      <repositories>
+        <repository>
+          <id>central</id>
+          <url>http://central</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+     <pluginRepositories>
+        <pluginRepository>
+          <id>central</id>
+          <url>http://central</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+  <activeProfiles>
+    <!--make the profile active all the time -->
+    <activeProfile>nexus</activeProfile>
+  </activeProfiles>
+</settings>
