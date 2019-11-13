@@ -1,0 +1,8 @@
+package org.drools.workshop;
+
+rule "My First Drools Rule"
+    when
+        $o: Object()
+    then
+        System.out.println(" >>> [v3] Rule Fired for Object: "+$o.toString());
+end
