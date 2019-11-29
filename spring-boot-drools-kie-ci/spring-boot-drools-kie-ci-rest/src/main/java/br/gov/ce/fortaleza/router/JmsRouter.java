@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import br.gov.ce.fortaleza.config.CamelContextManager;
+import br.gov.ce.fortaleza.controller.KieServerClient;
 import br.gov.ce.fortaleza.controller.RestApiController;
 
 @Component
@@ -29,11 +30,18 @@ public class JmsRouter extends RouteBuilder {
 
 					
 		from("direct:search-person")
-		.log(LoggingLevel.INFO,log,"param: ${header.teste}")
-		.bean(RestApiController.class, "executeRule(${header.teste})")
-		//.marshal().json(JsonLibrary.Jackson, PessoaFisicaWSVO.class)
-		.log(LoggingLevel.INFO, log, "retorno: ${body}")
-		.marshal().json(JsonLibrary.Jackson); 
+			.log(LoggingLevel.INFO,log,"param: ${header.teste}")
+			.bean(RestApiController.class, "executeRule(${header.teste})")
+			//.marshal().json(JsonLibrary.Jackson, PessoaFisicaWSVO.class)
+			.log(LoggingLevel.INFO, log, "retorno: ${body}")
+			.marshal().json(JsonLibrary.Jackson); 
+		
+		from("direct:executeKieserver")
+			.log(LoggingLevel.INFO,log,"EXECUTE KIE SERVER param: ${header.teste}")
+			.bean(KieServerClient.class, "executeRuleKieServer(${header.teste})")
+			//.marshal().json(JsonLibrary.Jackson, PessoaFisicaWSVO.class)
+			.log(LoggingLevel.INFO, log, "retorno: ${body}")
+			.marshal().json(JsonLibrary.Jackson); 
     
 		
 	}

@@ -22,6 +22,14 @@ class RestApi extends RouteBuilder {
 	    		.type(RestParamType.path)
 	    		.name("teste")
 	    	.endParam()
-	    	.to("direct:search-person");
+	    	.to("direct:search-person")
+	    
+	    .get("/kieserver/{teste}")
+	    	.id("testeKieServer")
+	    	.param()
+	    		.type(RestParamType.path)
+	    		.name("teste")
+	    	.endParam()
+	    	.to("direct:executeKieserver");
     }
 }
